@@ -10,10 +10,6 @@ import TaskAltIcon from '@mui/icons-material/TaskAlt';
 import { useCookies } from 'react-cookie';
 import { useEffect } from 'react';
 
-const S3_BUCKET ='mypicturesbucket';
-const ACCESS_KEY ='ASIASIPLIXCTMDO7GQ7C';
-const SECRET_ACCESS_KEY = 'tpuIPiV3sOtYhMFquHziz4XVglzmQfF/AQ2X34sL';
-const TOKEN='FwoGZXIvYXdzEM///////////wEaDJgxktP5YJQ/k2SfDiLAAZFEvtXUrPQ4Az+bwj/oXIUCzSbBUEX3N/ibE0+I9IcAbBr61128OTDVH+JplrM/wqzbRJF8zXh+I5NBI2aEUW21Q64XjEl/H3UdPq9yQ/A3/iO4NVacdnBCPKJX3pvZHWp9C4K1Oclu7ZYsBpu7kaJsf7in7+s7P2eizeBcNGGQDoTbpjZ63ZrqaYWR9hg4KNNBm/cJ0UZTmtc9Tm6XQs9+6GYtfKy30j8d42RGti4yzKIwnjPjfOLL4wAeB7TFwijowtWhBjIt/WEWvqvxDTVn8mkfmo7d/rcAffIrHLz8U8IojGeeA40gFNgnosJKlr/hIG01';
 
 const myBucket = new AWS.S3({
   accessKeyId: ACCESS_KEY,
