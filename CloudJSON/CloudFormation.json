@@ -1,0 +1,431 @@
+{
+    "Resources": {
+
+        "Table1": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+                "TableName": "Table1CF",
+                "AttributeDefinitions": [
+                    {
+                        "AttributeName": "email",
+                        "AttributeType": "S"
+                    }
+                ],
+                "KeySchema": [
+                    {
+                        "AttributeName": "email",
+                        "KeyType": "HASH"
+                    }
+
+                ],
+                "ProvisionedThroughput": {
+                    "ReadCapacityUnits": 5,
+                    "WriteCapacityUnits": 5
+                }
+            }
+        },
+        "Table2": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+                "TableName": "Table2CF",
+                "AttributeDefinitions": [
+                    {
+                        "AttributeName": "eventName",
+                        "AttributeType": "S"
+                    }  
+                ],
+                "KeySchema": [
+                    {
+                        "AttributeName": "eventName",
+                        "KeyType": "HASH"
+                    }
+
+                ],
+                "ProvisionedThroughput": {
+                    "ReadCapacityUnits": 5,
+                    "WriteCapacityUnits": 5
+                }
+            }
+        },
+
+        
+        
+        "MyFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "FunctionName": "loginCF",
+                "Handler": "index.lambda_handler",
+                "Role": "arn:aws:iam::155649095846:role/LabRole",
+                "Runtime": "python3.9",
+                "Code": {
+                    "ZipFile": {
+                        "Fn::Join": [
+                            "\n",
+                            [
+                                "import boto3",
+                                "import json",
+                                "import os",
+                                "",
+                                "# Initialize the AWS SDK clients",
+                                "dynamodb = boto3.resource('dynamodb')",
+                                "table_name = 'Table1CF'",
+                                "table = dynamodb.Table(table_name)",
+                                "",
+                                "def lambda_handler(event, context):",
+                                "    email = event['email']",
+                                "    password = event['password']",
+                                "    print(event)",
+                                "    user = get_user_by_email(email)",
+                                "    if not user:",
+                                "        return {",
+                                "            'statusCode': 401,",
+                                "            'body': json.dumps({'message': 'Invalid email or password'})",
+                                "        }",
+                                "    print(str(password)==str(user['password']))",
+                                "    if not (str(password)==str(user['password'])):",
+                                "        return {",
+                                "            'statusCode': 401,",
+                                "            'body': json.dumps({'message': 'Invalid email or password'})",
+                                "        }",
+                                "    return {",
+                                "        'statusCode': 200,",
+                                "        'body': json.dumps({'message': 'Login successful', 'user_id': user['email']})",
+                                "    }",
+                                "",
+                                "def get_user_by_email(email):",
+                                "    response = table.scan(",
+                                "        FilterExpression='email = :email',",
+                                "        ExpressionAttributeValues={':email': email}",
+                                "    )",
+                                "    items = response['Items']",
+                                "    if len(items) == 0:",
+                                "        return None",
+                                "    return items[0]"
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+
+        "MyLoginLogGroup": {
+          "Type": "AWS::Logs::LogGroup",
+          "Properties": {
+            "LogGroupName": "/aws/lambda/loginCF"
+          }
+        },
+
+
+        "MySignupLogGroup": {
+          "Type": "AWS::Logs::LogGroup",
+          "Properties": {
+            "LogGroupName": "/aws/lambda/signupCF"
+          }
+        },
+    
+        "MyFunction2": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "FunctionName": "signupCF",
+                "Handler": "index.lambda_handler",
+                "Role": "arn:aws:iam::155649095846:role/LabRole",
+                "Runtime": "python3.9",
+                "Code": {
+                    "ZipFile": {
+                        "Fn::Join": [
+                            "\n",
+                            [
+                                "import json",
+                                "import boto3",
+                                "import os",
+                                "",
+                                "dynamodb = boto3.resource('dynamodb')",
+                                "table_name = 'Table1CF'",
+                                "table = dynamodb.Table(table_name)",
+                                "",
+                                "def lambda_handler(event, context):",
+                                "    print(event['email'])",
+                                "",
+                                "    response = table.get_item(",
+                                "        Key={",
+                                "            'email': event['email']",
+                                "        }",
+                                "    )",
+                                "",
+                                "    if 'Item' in response:",
+                                "        return {",
+                                "            'statusCode': 409,",
+                                "            'body': json.dumps({'error': 'User already exists'})",
+                                "        }",
+                                "    else:",
+                                "        table.put_item(",
+                                "            Item={",
+                                "                'email': event['email'],",
+                                "                'name': event['name'],",
+                                "                'password':event['password']",
+                                "            }",
+                                "        )",
+                                "",
+                                "    return {",
+                                "        'statusCode': 200,",
+                                "        'body': json.dumps({'email': event['email']})",
+                                "    }"
+                              ]
+                        ]
+                    }
+                }
+            }
+        },
+
+        "MySNSTopic": {
+            "Type": "AWS::SNS::Topic",
+            "Properties": {
+                "TopicName": "hlifaxCF" 
+            }
+        },
+
+
+        "MySNSTopicSubscription": {
+            "Type": "AWS::SNS::Subscription",
+            "Properties": {
+              "Protocol": "email",
+              "TopicArn": { "Ref": "MySNSTopic" },
+              "Endpoint": "rg917462@dal.ca"
+          }
+        },
+
+
+        "MyS3Bucket": {
+          "Type": "AWS::S3::Bucket",
+          "Properties": {
+              "BucketName": "mypictbucketcf"
+          }
+        },
+          
+
+        "MyFunction3": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "FunctionName": "getPicDetailsCF",
+                "Handler": "index.lambda_handler",
+                "Role": "arn:aws:iam::155649095846:role/LabRole",
+                "Runtime": "python3.9",
+                "Code": {
+                    "ZipFile": {
+                        "Fn::Join": [
+                            "\n",
+                            [
+                                "import boto3",
+                                "import json",
+                                "import os",
+                                "",
+                                "dynamodb = boto3.client('dynamodb')",
+                                "rekognition = boto3.client('rekognition')",
+                                "s3 = boto3.client('s3')",
+                                "",
+                                "",
+                                "def sendMessage(message):",
+                                "    topic_arn = os.environ['MySnsArn']",
+                                "    sns = boto3.client('sns')",
+                                "    response = sns.publish(",
+                                "        TopicArn=topic_arn,",
+                                "        Message=message",
+                                "    )",
+                                "    print('Message sent:', response['MessageId'])",
+                                "",
+                                "",
+                                "",
+                                "def flatten(arr):",
+                                "    flat_arr = []",
+                                "    for i in arr:",
+                                "        if type(i) == list:",
+                                "            flat_arr += flatten(i)",
+                                "        else:",
+                                "            flat_arr.append(i)",
+                                "    return flat_arr",
+                                "",
+                                "",
+                                "",
+                                "def insertIntoDB(item):",
+                                "       # insert the item into the table",
+                                "    response = dynamodb.put_item(",
+                                "        TableName='Table2',",
+                                "        Item=item",
+                                "    )",
+                                "",
+                                "    # return a response to the client",
+                                "    return {",
+                                "        'statusCode': 200,",
+                                "        'body': 'Record inserted successfully'",
+                                "    }",
+                                "    ",
+                                "",
+                                "def Detect_key_phrases(text):",
+                                "    comprehend = boto3.client(service_name='comprehend', region_name='us-east-1')",
+                                "    response = comprehend.detect_key_phrases(Text=text, LanguageCode='en')",
+                                "    key_phrases=[]",
+                                "    for phrase in response['KeyPhrases']:",
+                                "        if(str(phrase['Text']) not in key_phrases):",
+                                "            key_phrases.append(phrase['Text'].lower().split())",
+                                "            ",
+                                "    ",
+                                "    key_phrases=flatten(key_phrases)",
+                                "    print(key_phrases)",
+                                "    ",
+                                "    ",
+                                "    # Use AWS Comprehend to detect temporal expressions in text",
+                                "    entities = comprehend.detect_entities(",
+                                "        Text=text,",
+                                "        LanguageCode='en'",
+                                "    )",
+                                "    temporal_entities = [entity for entity in entities['Entities'] if entity['Type'] == 'DATE']",
+                                "    print(temporal_entities)",
+                                "    ",
+                                "    if('halifax' in key_phrases):",
+                                "        item={",
+                                "        'eventName': {'S':temporal_entities[0]['Text']},",
+                                "        'City': {'S': 'HALIFAX'},",
+                                "        'Text':{'S':text}",
+                                "        }",
+                                "        insertIntoDB(item)",
+                                "        print(\"ALERT!!! There is an event in halifax at:\"+temporal_entities[0]['Text'])",
+                                "        message=\"ALERT!!! There is an event in halifax at:\"+temporal_entities[0]['Text']",
+                                "        sendMessage(message)",
+
+                                "def Detect_text(photo, bucket):",
+                                "    finalText=''",
+                                "    response = rekognition.detect_text(Image={'S3Object': {'Bucket': bucket, 'Name': photo}})",
+                                "    textDetections = response['TextDetections']",
+                                "    for text in textDetections:",
+                                "        if text['Type'] == 'LINE':",
+                                "            finalText = finalText+' x'+text['DetectedText']",
+
+                                "    Detect_key_phrases(finalText)",
+           
+
+                                "def lambda_handler(event, context):",
+                                "    bucket = MY_BUCKET_NAME",
+                                "    response = s3.list_objects_v2(Bucket=bucket)",
+                                "    for obj in response['Contents']:",
+                                "        Detect_text(obj['Key'],bucket)",
+                                "    s3.delete_object(Bucket=bucket, Key=obj['Key'])"
+
+                            ]
+                        ]
+                    }
+                },
+                "Environment":{
+                  "Variables":{
+                    "MySnsArn":{
+                      "Ref":"MySNSTopic"
+                    },
+                    "MY_BUCKET_NAME": { "Ref": "MyS3Bucket" }
+                  }
+                }
+            }
+        },
+
+        "ApiGatewayRestApi": {
+          "Type": "AWS::ApiGateway::RestApi",
+          "Properties": {
+            "Name": "UserManagementApi"
+          }
+
+        },
+        "ApiGatewayResourceSignup": {
+          "Type": "AWS::ApiGateway::Resource",
+          "Properties": {
+            "RestApiId": {"Ref": "ApiGatewayRestApi"},
+            "ParentId": {"Fn::GetAtt": ["ApiGatewayRestApi", "RootResourceId"]},
+            "PathPart": "signup"
+          }
+          
+        },
+        "ApiGatewayResourceLogin": {
+          "Type": "AWS::ApiGateway::Resource",
+          "Properties": {
+            "RestApiId": {"Ref": "ApiGatewayRestApi"},
+            "ParentId": {"Fn::GetAtt": ["ApiGatewayRestApi", "RootResourceId"]},
+            "PathPart": "login"
+          }
+        },
+
+        "ApiGatewayMethodSignup": {
+          "Type": "AWS::ApiGateway::Method",
+          "Properties": {
+            "RestApiId": {"Ref": "ApiGatewayRestApi"},
+            "ResourceId": {"Ref": "ApiGatewayResourceSignup"},
+            "HttpMethod": "POST",
+            "AuthorizationType": "NONE",
+            "Integration": {
+              "Type": "AWS",
+              "IntegrationHttpMethod": "POST",
+              "Uri": {"Fn::Join": ["", ["arn:aws:apigateway:", {"Ref": "AWS::Region"}, ":lambda:path/2015-03-31/functions/", {"Fn::GetAtt": ["MyFunction2", "Arn"]}, "/invocations"]]},
+        
+              "RequestTemplates": {
+                "application/json": "{\"body\": $input.json('$')}"
+              },
+              "PassthroughBehavior": "WHEN_NO_TEMPLATES"
+            }
+          }
+        },
+        "ApiGatewayMethodLogin": {
+          "Type": "AWS::ApiGateway::Method",
+          "Properties": {
+            "RestApiId": {"Ref": "ApiGatewayRestApi"},
+            "ResourceId": {"Ref": "ApiGatewayResourceLogin"},
+            "HttpMethod": "POST",
+            "AuthorizationType": "NONE",
+            "Integration": {
+              "Type": "AWS_PROXY",
+              "IntegrationHttpMethod": "POST",
+              "Uri": {"Fn::Join": ["", ["arn:aws:apigateway:", {"Ref": "AWS::Region"}, ":lambda:path/2015-03-31/functions/", {"Fn::GetAtt": ["MyFunction", "Arn"]}, "/invocations"]]},
+              "RequestTemplates": {
+                "application/json": "{\"body\": $input.json('$')}"
+              },
+              "PassthroughBehavior": "WHEN_NO_TEMPLATES"
+            }
+          }
+        },
+
+            "MyInstance": {
+              "Type": "AWS::EC2::Instance",
+              "Properties": {
+                "ImageId": "ami-0e38fa17744b2f6a5",
+                "InstanceType": "t2.small",
+                "KeyName": "myTerm",
+                "SecurityGroupIds": [
+                  "sg-09691cecc5c444895"
+                ],
+                "Tags": [
+                  {
+                    "Key": "Name",
+                    "Value": "myTermInstanceCF"
+                  }
+                ]
+              }
+            }
+        
+        
+        
+
+       
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      }
+  }
+
